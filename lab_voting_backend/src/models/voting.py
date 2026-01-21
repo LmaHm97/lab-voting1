@@ -26,6 +26,16 @@ class Week(db.Model):
             "presentations": [p.to_dict() for p in self.presentations],
         }
 
+class Vote(db.Model):
+    __tablename__ = "votes"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.String(64), nullable=False, index=True)
+    presentation_id = db.Column(db.Integer, db.ForeignKey("presentations.id"), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "presentation_id", name="uq_vote_user_presentation"),
+    )
 
 class Presentation(db.Model):
     __tablename__ = "presentations"
