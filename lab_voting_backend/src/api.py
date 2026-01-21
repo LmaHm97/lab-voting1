@@ -11,16 +11,13 @@ BASE_DIR = os.path.dirname(__file__)
 app = Flask(
     __name__,
     static_folder=os.path.join(BASE_DIR, "static"),
-    static_url_path=""
+    static_url_path="",  # allows /assets/... to resolve
 )
 
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-only-change-me")
-app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-app.config["SESSION_COOKIE_SECURE"] = True
-
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-# Database
+# Database config
 database_url = os.environ.get("DATABASE_URL") or os.environ.get("POSTGRES_URL")
 if database_url and database_url.startswith("postgres://"):
     database_url = database_url.replace("postgres://", "postgresql://", 1)
@@ -31,10 +28,20 @@ else:
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:////tmp/voting.db"
 
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
 db.init_app(app)
 
-# API routes
+# Create tables (simple approach; OK for small apps)
+with app.app_context():
+    db.create_all()
+
+# Blueprints
 app.register_blueprint(voting_bp, url_prefix="/api")
+
+# ---------- API ----------
+@app.get("/api/health")
+def health():
+    return {"ok": True}, 200
 
 @app.get("/api/me")
 def me():
@@ -42,11 +49,7 @@ def me():
         session["user_id"] = str(uuid.uuid4())
     return {"ok": True, "user_id": session["user_id"]}, 200
 
-@app.get("/api/health")
-def health():
-    return {"ok": True}, 200
-
-# Frontend
+# ---------- FRONTEND ----------
 @app.route("/")
 def serve_index():
     return send_from_directory(app.static_folder, "index.html")
