@@ -72,19 +72,6 @@ class Presentation(db.Model):
         }
 
 
-class Vote(db.Model):
-    __tablename__ = "votes"
-
-    id = db.Column(db.Integer, primary_key=True)
-    presentation_id = db.Column(db.Integer, db.ForeignKey("presentations.id"), nullable=False, index=True)
-
-    user_identifier = db.Column(db.String(100), nullable=False)  # fingerprint/session id
-    username = db.Column(db.String(100))
-    voted_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-
-    __table_args__ = (
-        db.UniqueConstraint("presentation_id", "user_identifier", name="_user_presentation_uc"),
-    )
 
     def to_dict(self):
         return {
