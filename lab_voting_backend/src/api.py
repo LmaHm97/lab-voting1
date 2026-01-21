@@ -1,29 +1,23 @@
 import os
-from flask import Flask, send_from_directory
+import uuid
+from flask import Flask, send_from_directory, session
 from flask_cors import CORS
-from flask import session
+
 from src.models.voting import db
 from src.routes.voting import voting_bp
-import uuid
-
-
-
-
-@app.get("/api/me")
-def me():
-    if "user_id" not in session:
-        session["user_id"] = str(uuid.uuid4())
-    return {"ok": True, "user_id": session["user_id"]}, 200
 
 BASE_DIR = os.path.dirname(__file__)
 
 app = Flask(
     __name__,
     static_folder=os.path.join(BASE_DIR, "static"),
-    static_url_path=""   # THIS IS CRITICAL
+    static_url_path=""
 )
 
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-only-change-me")
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = True
+
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 # Database
@@ -42,8 +36,17 @@ db.init_app(app)
 # API routes
 app.register_blueprint(voting_bp, url_prefix="/api")
 
-# -------- FRONTEND --------
+@app.get("/api/me")
+def me():
+    if "user_id" not in session:
+        session["user_id"] = str(uuid.uuid4())
+    return {"ok": True, "user_id": session["user_id"]}, 200
 
+@app.get("/api/health")
+def health():
+    return {"ok": True}, 200
+
+# Frontend
 @app.route("/")
 def serve_index():
     return send_from_directory(app.static_folder, "index.html")
@@ -54,8 +57,3 @@ def serve_static_files(path):
     if os.path.exists(full_path):
         return send_from_directory(app.static_folder, path)
     return send_from_directory(app.static_folder, "index.html")
-
-# Health check
-@app.get("/api/health")
-def health():
-    return {"ok": True}
