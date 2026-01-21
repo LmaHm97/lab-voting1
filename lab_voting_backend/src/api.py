@@ -1,9 +1,19 @@
 import os
 from flask import Flask, send_from_directory
 from flask_cors import CORS
-
+from flask import session
 from src.models.voting import db
 from src.routes.voting import voting_bp
+import uuid
+
+
+
+
+@app.get("/api/me")
+def me():
+    if "user_id" not in session:
+        session["user_id"] = str(uuid.uuid4())
+    return {"ok": True, "user_id": session["user_id"]}, 200
 
 BASE_DIR = os.path.dirname(__file__)
 
