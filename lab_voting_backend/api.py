@@ -9,10 +9,9 @@ def create_app():
     app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), "static"))
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-only-change-me")
 
-    # CORS (tighten origins in production if you know the frontend domain)
     CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-    # DB init
+    # DB config only (NO create_all on Vercel)
     database_url = os.environ.get("DATABASE_URL") or os.environ.get("POSTGRES_URL")
     if database_url and database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql://", 1)
@@ -25,15 +24,17 @@ def create_app():
         app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
 
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-
     db.init_app(app)
-  
 
+    # Health endpoint
+    @app.get("/api/health")
+    def health():
+        return {"ok": True}, 200
 
-    # API
+    # API blueprint (ONLY one /api prefix here)
     app.register_blueprint(voting_bp, url_prefix="/api")
 
-    # Static / SPA fallback
+    # Static fallback
     @app.route("/", defaults={"path": ""})
     @app.route("/<path:path>")
     def serve_static(path):
@@ -50,9 +51,3 @@ def create_app():
     return app
 
 app = create_app()
-@app.get("/api/health")
-def health():
-    return {"ok": True}, 200
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "5000")), debug=True)
