@@ -1,41 +1,51 @@
 import os
-from flask import Flask
+from flask import Flask, send_from_directory
 from flask_cors import CORS
 
 from src.models.voting import db
 from src.routes.voting import voting_bp
 
-def create_app():
-    app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), "src", "static"),static_url_path="")
-    app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-only-change-me")
+BASE_DIR = os.path.dirname(__file__)
 
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+app = Flask(
+    __name__,
+    static_folder=os.path.join(BASE_DIR, "static"),
+    static_url_path=""   # THIS IS CRITICAL
+)
 
-    database_url = os.environ.get("DATABASE_URL") or os.environ.get("POSTGRES_URL")
-    if database_url and database_url.startswith("postgres://"):
-        database_url = database_url.replace("postgres://", "postgresql://", 1)
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-only-change-me")
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-    if database_url:
-        app.config["SQLALCHEMY_DATABASE_URI"] = database_url
-    else:
-        app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:////tmp/voting.db"
+# Database
+database_url = os.environ.get("DATABASE_URL") or os.environ.get("POSTGRES_URL")
+if database_url and database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
 
-    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-    db.init_app(app)
+if database_url:
+    app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+else:
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:////tmp/voting.db"
 
-    with app.app_context():
-        db.create_all()
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+db.init_app(app)
 
-    app.register_blueprint(voting_bp, url_prefix="/api")
+# API routes
+app.register_blueprint(voting_bp, url_prefix="/api")
 
-    @app.get("/")
-    def root():
-        return {"service": "lab-voting-backend", "status": "running"}, 200
+# -------- FRONTEND --------
 
-    @app.get("/api/health")
-    def health():
-        return {"ok": True}, 200
+@app.route("/")
+def serve_index():
+    return send_from_directory(app.static_folder, "index.html")
 
-    return app
+@app.route("/<path:path>")
+def serve_static_files(path):
+    full_path = os.path.join(app.static_folder, path)
+    if os.path.exists(full_path):
+        return send_from_directory(app.static_folder, path)
+    return send_from_directory(app.static_folder, "index.html")
 
-app = create_app()
+# Health check
+@app.get("/api/health")
+def health():
+    return {"ok": True}
