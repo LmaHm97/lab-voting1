@@ -4,7 +4,7 @@ from sqlalchemy.exc import IntegrityError
 
 from src.models.voting import db, Week, Presentation, Vote, Rating, Comment
 
-voting_bp = Blueprint('voting', __name__, url_prefix='/api')
+voting_bp = Blueprint('voting', __name__)
 
 # Get all weeks with presentations
 @voting_bp.route('/weeks', methods=['GET'])
