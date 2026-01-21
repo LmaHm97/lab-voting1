@@ -6,7 +6,7 @@ from src.models.voting import db
 from src.routes.voting import voting_bp
 
 def create_app():
-    app = Flask(__name__)
+    app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), "static"))
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-only-change-me")
 
     CORS(app, resources={r"/api/*": {"origins": "*"}})
