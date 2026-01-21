@@ -1,9 +1,8 @@
 from flask import Blueprint, request, jsonify
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
-
 from src.models.voting import db, Week, Presentation, Vote, Rating, Comment
-
+from flask import session
 voting_bp = Blueprint("voting", __name__)
 
 # Get all weeks with presentations
@@ -297,3 +296,36 @@ def get_presentation_votes(presentation_id):
     votes = Vote.query.filter_by(presentation_id=presentation_id) \
         .order_by(Vote.voted_at.desc()).all()
     return jsonify({'votes': [vote.to_dict() for vote in votes]})
+@voting_bp.post("/presentations/<int:presentation_id>/vote")
+def vote(presentation_id):
+    user_id = session.get("user_id")
+    if not user_id:
+        return err("No session user. Call /api/me first.", code="NO_SESSION", status=401)
+
+    pres = Presentation.query.get(presentation_id)
+    if not pres:
+        return err("Presentation not found", code="NOT_FOUND", status=404)
+
+    existing = Vote.query.filter_by(
+        user_id=user_id,
+        presentation_id=presentation_id
+    ).first()
+
+    if existing:
+        return err(
+            "You already voted for this presentation.",
+            code="ALREADY_VOTED",
+            status=409
+        )
+
+    db.session.add(
+        Vote(user_id=user_id, presentation_id=presentation_id)
+    )
+    pres.votes += 1
+    db.session.commit()
+
+    return ok(
+        data=pres.to_dict(),
+        message="Vote recorded",
+        code="VOTED"
+    )
