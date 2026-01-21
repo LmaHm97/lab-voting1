@@ -1,5 +1,9 @@
 {
   "version": 2,
-  "builds": [{ "src": "lab_voting_backend/api.py", "use": "@vercel/python" }],
-  "routes": [{ "src": "/(.*)", "dest": "lab_voting_backend/api.py" }]
+  "builds": [
+    { "src": "src/api.py", "use": "@vercel/python" }
+  ],
+  "routes": [
+    { "src": "/(.*)", "dest": "src/api.py" }
+  ]
 }
