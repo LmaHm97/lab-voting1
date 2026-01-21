@@ -20,21 +20,38 @@ def get_weeks():
 # Create a new week
 @voting_bp.route('/weeks', methods=['POST'])
 def create_week():
-    data = request.get_json(silent=True) or {}
-    week_id = data.get('week_id')
-
+    body = request.get_json(silent=True) or {}
+    week_id = body.get("week_id")
     if not week_id:
-        return jsonify({'error': 'week_id is required'}), 400
+        return err("week_id is required", code="VALIDATION_ERROR", status=400)
 
-    existing_week = Week.query.filter_by(week_id=week_id).first()
-    if existing_week:
-        return jsonify({'error': 'Week already exists'}), 400
+    existing = Week.query.filter_by(week_id=week_id).first()
+    if existing:
+        return ok(
+            data=existing.to_dict(),
+            message="Week already exists",
+            code="WEEK_EXISTS",
+            status=200
+        )
 
-    week = Week(week_id=week_id)
-    db.session.add(week)
-    db.session.commit()
+    w = Week(week_id=week_id)
+    db.session.add(w)
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        # race condition safety
+        existing = Week.query.filter_by(week_id=week_id).first()
+        if existing:
+            return ok(data=existing.to_dict(), message="Week already exists", code="WEEK_EXISTS", status=200)
+        return err("Could not create week", code="DB_ERROR", status=500)
 
-    return jsonify(week.to_dict()), 201
+    return ok(data=w.to_dict(), message="Week created", code="WEEK_CREATED", status=201)
+    @voting_bp.get("/weeks")
+    def list_weeks():
+        weeks = Week.query.order_by(Week.created_at.desc()).all()
+        return ok(data=[w.to_dict() for w in weeks], code="WEEKS_LISTED")
+
 
 # Add a presentation to a week
 @voting_bp.route('/presentations', methods=['POST'])
