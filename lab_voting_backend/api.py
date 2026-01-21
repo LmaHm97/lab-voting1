@@ -27,7 +27,8 @@ def create_app():
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
     db.init_app(app)
-    with app.app_context():
+    @app.before_first_request
+    def _init_db():
         db.create_all()
 
     # API
