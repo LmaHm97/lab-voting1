@@ -27,9 +27,13 @@ def create_app():
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
     db.init_app(app)
-    @app.before_first_request
-    def _init_db():
-        db.create_all()
+    @app.before_request
+    def init_db_once():
+       if not getattr(app, "_db_initialized", False):
+          with app.app_context():
+               db.create_all()
+          app._db_initialized = True
+
 
     # API
     app.register_blueprint(voting_bp, url_prefix="/api")
